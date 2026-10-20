@@ -212,6 +212,22 @@ class MainActivity : AppCompatActivity() {
         webView.settings.apply {
             javaScriptEnabled = true
             domStorageEnabled = true // localStorage -- the Vendor Dashboard uses this (e.g. 'axmpVendorInDashboard').
+            // v1.0.3 ADDED (owner-reported: tapping "Enable" on the Marketplace plugin's
+            // "Siren on karein" primer banner worked, but reappeared on every single page
+            // refresh instead of staying unlocked -- "Matlab disable ho jata hai?"). Root
+            // cause: this WebView's media-autoplay-with-sound permission was left at its
+            // default (Android WebView requires an explicit user gesture before any audio
+            // plays, stricter than a normal Chrome tab, and that permission is scoped to
+            // one page instance -- it can never survive a reload no matter what). Direct
+            // port of the EXACT same line + reasoning already proven working in the Rider
+            // app's own MainActivity.kt: this does NOT force-unlock audio or bypass the
+            // page's own logic -- vendor-dashboard.js's axmpRenderAlertPrimer() still does
+            // its own real .play() probe and still shows/hides the banner based on whether
+            // that probe actually succeeds. All this does is stop the WebView itself from
+            // adding an EXTRA blanket restriction on top of that -- same as a normal
+            // browser tab, where the probe's own success/failure is what decides, not a
+            // hard-coded "never without a fresh tap this load" rule.
+            mediaPlaybackRequiresUserGesture = false
             setGeolocationEnabled(true) // v1.0.1 -- needed for Axomify Location Gate's popup (see class doc comment above), not the Vendor Dashboard itself.
             javaScriptCanOpenWindowsAutomatically = true
             setSupportMultipleWindows(false)
