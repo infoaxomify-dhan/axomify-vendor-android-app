@@ -417,5 +417,22 @@ class MainActivity : AppCompatActivity() {
 
         @JavascriptInterface
         fun isNativeApp(): Boolean = true
+
+        // v1.0.5 ADDED -- lets the Vendor Dashboard page's own JS (see
+        // vendor-dashboard.js's v1.1.160 axmpStopSiren(), Axomify Marketplace
+        // plugin) silence a native siren that's mid-playback, from its one
+        // existing "Stop Siren" button. Needed because a new order that
+        // arrives while this app is already OPEN plays the native siren
+        // (AxomifyFirebaseMessagingService's MediaPlayer) with no automatic
+        // stop -- SplashActivity.kt's stopActiveSiren() call only runs on a
+        // fresh cold-start, which doesn't happen again while already in the
+        // foreground. Safe to call even when no siren is currently playing
+        // (stopActiveSiren() itself is a no-op in that case).
+        @JavascriptInterface
+        fun stopSiren() {
+            runOnUiThread {
+                AxomifyFirebaseMessagingService.stopActiveSiren(this@MainActivity)
+            }
+        }
     }
 }
