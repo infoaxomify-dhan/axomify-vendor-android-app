@@ -3,26 +3,20 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <!-- Rider Dashboard's live-location ping (see the website's own
-         requestScreenWakeLock()/location code) needs this to actually get a GPS fix
-         through the WebView — without it, the browser-side navigator.geolocation
-         call the page already makes will just silently fail inside a native WebView
-         (unlike a normal Chrome tab, a WebView has no OS permission of its own by
-         default). -->
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-    <!-- Lets the rider take a KYC/deposit photo directly from the file-upload
-         fields already on the website, instead of only picking an existing file. -->
+    <!-- Lets a seller take a product-photo/KYC document directly from the
+         file-upload fields already on the website, instead of only picking an
+         existing file. -->
     <uses-permission android:name="android.permission.CAMERA" />
-    <!-- Required on Android 13+ before ANY notification (including the siren) can be
-         shown — MainActivity.kt requests this at runtime; this just declares it. -->
+    <!-- Required on Android 13+ before ANY notification can be shown —
+         MainActivity.kt requests this at runtime; this just declares it. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.VIBRATE" />
-    <uses-permission android:name="android.permission.WAKE_LOCK" />
-    <!-- So a delivered push can show even if Android is otherwise trying to doze the
-         app — keeps the siren notification itself reliable; does not keep the app
-         process alive in the background beyond what FCM itself already guarantees. -->
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <!-- No ACCESS_FINE_LOCATION / ACCESS_COARSE_LOCATION, no WAKE_LOCK, no
+         FOREGROUND_SERVICE — deliberately narrower than the Rider app's
+         manifest. The Vendor Dashboard has no live-location feature, and
+         Phase 1 has no MediaPlayer/wake-lock siren logic (see
+         AxomifyApplication.kt's own doc comment for the Phase 1/Phase 2
+         split). -->
 
     <application
         android:name=".AxomifyApplication"
@@ -30,41 +24,36 @@
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher"
         android:label="@string/app_name"
-        android:theme="@style/Theme.AxomifyRider"
+        android:theme="@style/Theme.AxomifyVendor"
         android:usesCleartextTraffic="false">
 
-        <!-- v1.3.7 ADDED — the real app launcher now, showing a full-screen custom
-             splash image/design (see SplashActivity.kt + res/layout/
-             activity_splash.xml). Hands off to MainActivity immediately, with no
-             artificial delay, then finishes itself. -->
+        <!-- The real app launcher — shows a full-screen custom splash image
+             (see SplashActivity.kt + res/layout/activity_splash.xml). Hands
+             off to MainActivity immediately, then finishes itself. -->
         <activity
             android:name=".SplashActivity"
             android:exported="true"
-            android:theme="@style/Theme.AxomifyRider.FullSplash">
+            android:theme="@style/Theme.AxomifyVendor.FullSplash">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
 
-        <!-- v1.3.7: no longer the launcher (SplashActivity above is) — only ever
-             started internally, by SplashActivity, so exported is now false
-             (narrower, more correct surface; this activity declares no
-             intent-filter of its own). -->
+        <!-- Not the launcher (SplashActivity above is) — only ever started
+             internally, by SplashActivity, so exported is false. -->
         <activity
             android:name=".MainActivity"
             android:exported="false"
             android:configChanges="orientation|screenSize|keyboardHidden"
             android:windowSoftInputMode="adjustResize"
             android:launchMode="singleTop"
-            android:theme="@style/Theme.AxomifyRider.Splash" />
+            android:theme="@style/Theme.AxomifyVendor.Splash" />
 
-        <!-- Handles EVERY push, in every app state (foreground, background, and fully
-             closed/killed) — see AxomifyFirebaseMessagingService.kt's v6 "Tareeka B"
-             doc comment for why this changed from the OS-driven design, where
-             background/killed delivery was handled directly by the OS and this
-             service never ran for that case. As of v7, also de-duplicates FCM's
-             occasional redelivery of the same message (see that file's v7 note). -->
+        <!-- Handles every push the app receives. Phase 1: nothing is actually
+             sent to this app yet (Axomify Marketplace plugin has no new-order
+             push wiring for vendors) — this is here so the app is ready the
+             moment Phase 2 starts sending. -->
         <service
             android:name=".AxomifyFirebaseMessagingService"
             android:exported="false">
@@ -73,16 +62,12 @@
             </intent-filter>
         </service>
 
-        <!-- Default notification channel — kept in sync as a safe fallback in case a
-             push is ever sent as a "notification"-type message instead of the normal
-             data-only message (see AxomifyFirebaseMessagingService.kt's v6 doc
-             comment) — must match AxomifyApplication.kt's CHANNEL_ID exactly. v7:
-             bumped because v6's channel was never actually silenced (see
-             AxomifyApplication.kt's v7 doc comment) — a fresh id is required since
-             a channel's sound is locked forever once created on a device. -->
+        <!-- Default notification channel — safe fallback in case a push is
+             ever sent as a "notification"-type message instead of a data-only
+             one. Must match AxomifyApplication.kt's CHANNEL_ID exactly. -->
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
-            android:value="axomify_order_siren_v7" />
+            android:value="axomify_vendor_alerts_v1" />
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_icon"
             android:resource="@drawable/ic_notification" />
