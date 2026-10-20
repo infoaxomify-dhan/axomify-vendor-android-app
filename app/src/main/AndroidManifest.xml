@@ -22,10 +22,17 @@
          own — this is purely to support that other plugin's popup, same as
          how the Rider app already supports it. -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-    <!-- No WAKE_LOCK / FOREGROUND_SERVICE — deliberately narrower than the
-         Rider app's manifest. Phase 1 has no MediaPlayer/wake-lock siren
-         logic (see AxomifyApplication.kt's own doc comment for the Phase
-         1/Phase 2 split). -->
+    <!-- v1.0.4 ADDED (2026-10-20) — "Phase 2" (owner-confirmed, real native
+         order-siren via MediaPlayer, see AxomifyFirebaseMessagingService.kt's
+         own v1.0.4 doc comment). Direct port of the Rider app's identical
+         permissions: WAKE_LOCK lets playSirenDirectly() hold a brief partial
+         wake lock so the siren clip is not cut off if the device tries to
+         sleep mid-playback; FOREGROUND_SERVICE keeps a delivered push
+         reliable even while Android is otherwise trying to doze the app —
+         this does not keep the app process alive in the background beyond
+         what FCM itself already guarantees. -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 
     <application
         android:name=".AxomifyApplication"
@@ -59,10 +66,11 @@
             android:launchMode="singleTop"
             android:theme="@style/Theme.AxomifyVendor.Splash" />
 
-        <!-- Handles every push the app receives. Phase 1: nothing is actually
-             sent to this app yet (Axomify Marketplace plugin has no new-order
-             push wiring for vendors) — this is here so the app is ready the
-             moment Phase 2 starts sending. -->
+        <!-- Handles every push the app receives, in every app state (foreground,
+             background, and fully closed/killed) — see
+             AxomifyFirebaseMessagingService.kt's v1.0.4 doc comment for why this
+             is now the ONLY place a notification gets built/shown, and where the
+             real native siren is played from. -->
         <service
             android:name=".AxomifyFirebaseMessagingService"
             android:exported="false">
@@ -71,12 +79,16 @@
             </intent-filter>
         </service>
 
-        <!-- Default notification channel — safe fallback in case a push is
-             ever sent as a "notification"-type message instead of a data-only
-             one. Must match AxomifyApplication.kt's CHANNEL_ID exactly. -->
+        <!-- Default notification channel — kept in sync as a safe fallback in
+             case a push is ever sent as a "notification"-type message instead of
+             the normal data-only message. Must match AxomifyApplication.kt's
+             CHANNEL_ID exactly. v1.0.4: bumped to the new silent siren channel
+             id — a channel's sound/config is locked forever once created on a
+             device, so this must always match whatever AxomifyApplication.kt
+             currently creates. -->
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
-            android:value="axomify_vendor_alerts_v1" />
+            android:value="axomify_vendor_order_siren_v1" />
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_icon"
             android:resource="@drawable/ic_notification" />
