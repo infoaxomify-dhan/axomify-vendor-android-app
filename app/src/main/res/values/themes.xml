@@ -1,52 +1,47 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <style name="Theme.AxomifyRider" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+    <style name="Theme.AxomifyVendor" parent="Theme.MaterialComponents.DayNight.NoActionBar">
         <item name="colorPrimary">@color/axomify_gold</item>
         <item name="colorPrimaryDark">@color/axomify_ink</item>
         <item name="colorAccent">@color/axomify_gold</item>
         <item name="android:statusBarColor">@color/axomify_ink</item>
         <item name="android:windowBackground">@color/axomify_ink</item>
-        <!-- v1.3.14 ADDED (2026-10-20) — owner-reported: the Rider Dashboard's
-             own header (logo/top bar) was rendering UNDER the phone's status
-             bar (date/time/battery icons overlapping the page's own top
-             content). Root cause: this app's targetSdk/compileSdk is 35
-             (Android 15), which made edge-to-edge display MANDATORY by
+        <!-- v1.0.2 ADDED (2026-10-20) — owner-reported: the Vendor Dashboard's
+             own header ("Welcome back", seller name) was rendering UNDER the
+             phone's status bar (time/battery/signal icons overlapping the
+             page's own text). Root cause: this app's targetSdk/compileSdk is
+             35 (Android 15), which made edge-to-edge display MANDATORY by
              default on an Android 15 device — app content draws behind the
              system status/navigation bars unless the app explicitly opts out
-             or handles the safe-area insets itself. This is the exact same
-             latent gap already identified and fixed for the Vendor app
-             (v1.0.2) — this app's own themes.xml was never given the matching
-             fix at the time because the owner hadn't reported it as a problem
-             here yet. This plain WebView shell was never built to handle
-             insets (nothing here needs the extra screen space edge-to-edge
-             gives), so this restores the normal, pre-Android-15 behavior
-             instead — content stays safely BELOW the status bar, exactly like
-             the Rider Dashboard already looks in a regular mobile browser.
-             Google added this exact attribute as the official, no-behavior-
-             change opt-out for apps not yet adapted for edge-to-edge;
-             recognized only on Android 15+ devices, silently ignored
-             (harmless) on older ones. Direct, identical port of the Vendor
-             app's own already-confirmed fix. -->
+             or handles the safe-area insets itself. This plain WebView shell
+             was never built to handle insets (nothing here needs the extra
+             screen space edge-to-edge gives), so this restores the normal,
+             pre-Android-15 behavior instead — content stays safely BELOW the
+             status bar, exactly like the Vendor Dashboard already looks in a
+             regular mobile browser. Google added this exact attribute as the
+             official, no-behavior-change opt-out for apps not yet adapted for
+             edge-to-edge; recognized only on Android 15+ devices, silently
+             ignored (harmless) on older ones. -->
         <item name="android:windowOptOutEdgeToEdgeEnforcement">true</item>
     </style>
 
     <!-- Brief splash while the WebView's first paint loads — avoids a flash of
-         plain white before the page itself appears. Shows the Axomify Mart
-         Rider logo centered on the brand-ink background (see drawable/
-         splash_background.xml — that's the file to edit, not this one, for
-         any future logo swap). Used by MainActivity, AFTER SplashActivity's
-         own full-screen artwork (below) has already briefly shown. -->
-    <style name="Theme.AxomifyRider.Splash" parent="Theme.AxomifyRider">
+         plain white before the Vendor Dashboard page itself appears. Shows the
+         Axomify Mart Seller logo centered on the brand-ink background (see
+         drawable/splash_background.xml — that's the file to edit, not this
+         one, for any future logo swap). Used by MainActivity, AFTER
+         SplashActivity's own full-screen artwork (below) has already briefly
+         shown. -->
+    <style name="Theme.AxomifyVendor.Splash" parent="Theme.AxomifyVendor">
         <item name="android:windowBackground">@drawable/splash_background</item>
     </style>
 
-    <!-- v1.3.7 ADDED — SplashActivity's own theme. windowBackground is a plain
-         solid color (not the full-screen image itself) so the very first frame
-         Android draws, before activity_splash.xml's ImageView has even
-         inflated, is never a jarring flash of plain white — it's a close
-         enough color match to the artwork's own dark lower section. The actual
-         full-screen artwork is drawn moments later by the ImageView in
+    <!-- SplashActivity's own theme. windowBackground is a plain solid color
+         (not the full-screen image itself) so the very first frame Android
+         draws, before activity_splash.xml's ImageView has even inflated, is
+         never a jarring flash of plain white. The actual full-screen artwork
+         is drawn moments later by the ImageView in
          res/layout/activity_splash.xml (see SplashActivity.kt). -->
-    <style name="Theme.AxomifyRider.FullSplash" parent="Theme.AxomifyRider">
+    <style name="Theme.AxomifyVendor.FullSplash" parent="Theme.AxomifyVendor">
         <item name="android:windowBackground">@color/axomify_ink</item>
     </style>
 </resources>
