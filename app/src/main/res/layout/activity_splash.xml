@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- v1.3.7 ADDED — the full-screen splash artwork shown by SplashActivity.kt.
+     android:scaleType="centerCrop" is what makes this work correctly on every
+     phone's screen ratio: it scales the image up just enough to fully cover
+     the screen in both directions, then crops only the excess (centered),
+     never stretching/distorting the artwork and never leaving blank bars.
+     See SplashActivity.kt's own doc comment for the full reasoning. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/axomify_ink">
+
+    <ImageView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="centerCrop"
+        android:contentDescription="@null"
+        android:src="@drawable/splash_fullscreen" />
+
+</FrameLayout>

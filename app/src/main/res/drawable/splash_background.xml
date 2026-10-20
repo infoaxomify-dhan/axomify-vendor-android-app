@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Splash background: the brand-ink full-screen color (same as the regular app
+     theme's own window background) with the Axomify Mart Rider logo centered on
+     top, shown briefly while the WebView's first page paint is still loading.
+
+     This is the FILE to replace next time the splash logo changes: swap the
+     image at res/drawable-nodpi/splash_logo.png (keep that exact filename) and
+     nothing else here needs to change. The size below (160dp) only controls how
+     big the logo is drawn on screen — it does not need to match the source
+     image's own pixel size, so a higher-resolution replacement image will still
+     look sharp.
+-->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/axomify_ink" />
+    <item
+        android:drawable="@drawable/splash_logo"
+        android:gravity="center"
+        android:width="160dp"
+        android:height="160dp" />
+</layer-list>

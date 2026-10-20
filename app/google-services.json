@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "501329726667",
+    "project_id": "axomify-rider",
+    "storage_bucket": "axomify-rider.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:501329726667:android:7288677c5b62745f9a9f4e",
+        "android_client_info": {
+          "package_name": "in.axomifymart.rider"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAJk-2zucXSPSEnUP-ki-rw1M5fFuGz8ME"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

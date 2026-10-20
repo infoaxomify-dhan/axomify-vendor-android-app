@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Adaptive icon (Android 8.0+ / API 26+). On these versions the OS composites
+     the background + foreground layers itself (and can mask/animate them), so
+     this file — not the flat PNGs in the mipmap-* folders — is what actually
+     shows on modern devices. The flat PNGs stay as a fallback for API < 26. -->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/axomify_icon_background" />
+    <foreground android:drawable="@mipmap/ic_launcher_foreground" />
+</adaptive-icon>

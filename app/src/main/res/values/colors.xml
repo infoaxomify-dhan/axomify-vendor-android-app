@@ -1,0 +1,13 @@
+<resources>
+    <!-- Lifted directly from frontend/views/rider-dashboard.php's own CSS custom
+         properties (the ax-gold / ax-ink CSS variables) so the native app shell
+         matches the website's existing branding instead of introducing a new
+         color scheme. -->
+    <color name="axomify_gold">#E8A33D</color>
+    <color name="axomify_ink">#1C1917</color>
+    <color name="white">#FFFFFF</color>
+
+    <!-- Adaptive icon background layer (mipmap-anydpi-v26/ic_launcher.xml) —
+         plain ink color behind the gold circle+monogram foreground. -->
+    <color name="axomify_icon_background">#1C1917</color>
+</resources>
