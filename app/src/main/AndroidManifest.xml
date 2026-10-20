@@ -11,12 +11,21 @@
          MainActivity.kt requests this at runtime; this just declares it. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.VIBRATE" />
-    <!-- No ACCESS_FINE_LOCATION / ACCESS_COARSE_LOCATION, no WAKE_LOCK, no
-         FOREGROUND_SERVICE — deliberately narrower than the Rider app's
-         manifest. The Vendor Dashboard has no live-location feature, and
-         Phase 1 has no MediaPlayer/wake-lock siren logic (see
-         AxomifyApplication.kt's own doc comment for the Phase 1/Phase 2
-         split). -->
+    <!-- v1.0.1 ADDED (2026-10-20) — needed so the sitewide "Axomify Location
+         Gate" plugin's mandatory delivery-location popup (a SEPARATE plugin
+         from Axomify Marketplace, runs on every front-end page for every
+         visitor who has no location on file yet, including the Vendor
+         Dashboard) can actually use its "Use My Location" button inside this
+         app's WebView — see MainActivity.kt's requestRuntimePermissions() /
+         onGeolocationPermissionsShowPrompt() for how it's granted. The
+         Vendor Dashboard itself still has no live-location feature of its
+         own — this is purely to support that other plugin's popup, same as
+         how the Rider app already supports it. -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <!-- No WAKE_LOCK / FOREGROUND_SERVICE — deliberately narrower than the
+         Rider app's manifest. Phase 1 has no MediaPlayer/wake-lock siren
+         logic (see AxomifyApplication.kt's own doc comment for the Phase
+         1/Phase 2 split). -->
 
     <application
         android:name=".AxomifyApplication"
