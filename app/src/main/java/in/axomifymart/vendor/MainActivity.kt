@@ -33,12 +33,17 @@ import java.net.URL
  * seller already uses today (vendor/views/dashboard.php, Axomify Marketplace
  * plugin). No UI here is duplicated or re-built natively.
  *
- * Deliberately SIMPLER than the Rider app's MainActivity in one place: no
- * geolocation permission/bridging code. The Vendor Dashboard has no live-
- * location feature (confirmed -- no navigator.geolocation call anywhere in
- * the Axomify Marketplace plugin, unlike the Rider Dashboard's delivery-
- * tracking ping), so that whole permission + WebChromeClient callback is
- * simply not needed here.
+ * v1.0.1 ADDED (2026-10-20) -- geolocation permission/bridging code, a direct
+ * port of the Rider app's identical handling. NOT for the Vendor Dashboard
+ * itself (it still has no live-location feature of its own, confirmed -- no
+ * navigator.geolocation call anywhere in the Axomify Marketplace plugin). It
+ * is for a completely SEPARATE, sitewide plugin -- "Axomify Location Gate" --
+ * which shows a mandatory "share your delivery location" popup on every
+ * front-end page (including the Vendor Dashboard) for any visitor with no
+ * location saved yet, and calls navigator.geolocation when its own "Use My
+ * Location" button is tapped. Without this, that popup's location button was
+ * silently blocked inside this app's WebView (Android WebView denies
+ * geolocation by default unless the hosting app explicitly grants it here).
  *
  * *** CONFIRM START_URL BELOW is the real, live URL of the page the
  * Vendor Dashboard shortcode is on, before building. Owner's tentative
@@ -60,6 +65,7 @@ class MainActivity : AppCompatActivity() {
         // app's "App Updates" page.
         const val UPDATE_CHECK_URL = "https://axomifymart.in/wp-json/axomify/v1/vendor-app-version"
 
+        private const val REQ_LOCATION = 1001
         private const val REQ_NOTIFICATIONS = 1002
         private const val TAG = "AxomifyVendorUpdateCheck"
 
@@ -75,6 +81,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var swipeRefresh: SwipeRefreshLayout
     private lateinit var splashOverlay: View
     private var splashHidden = false
+    private var pendingGeoCallback: GeolocationPermissions.Callback? = null
+    private var pendingGeoOrigin: String? = null
     private var filePathCallback: ValueCallback<Array<Uri>>? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -204,7 +212,7 @@ class MainActivity : AppCompatActivity() {
         webView.settings.apply {
             javaScriptEnabled = true
             domStorageEnabled = true // localStorage -- the Vendor Dashboard uses this (e.g. 'axmpVendorInDashboard').
-            setGeolocationEnabled(false) // Vendor Dashboard has no location feature -- left explicitly off.
+            setGeolocationEnabled(true) // v1.0.1 -- needed for Axomify Location Gate's popup (see class doc comment above), not the Vendor Dashboard itself.
             javaScriptCanOpenWindowsAutomatically = true
             setSupportMultipleWindows(false)
             cacheMode = WebSettings.LOAD_DEFAULT
@@ -288,6 +296,23 @@ class MainActivity : AppCompatActivity() {
         }
 
         webView.webChromeClient = object : WebChromeClient() {
+            // v1.0.1 ADDED -- Axomify Location Gate's popup (see class doc
+            // comment above) needs this -- a WebView's navigator.geolocation
+            // call is blocked until the app itself grants it here (separately
+            // from the Android OS runtime permission requested in
+            // requestRuntimePermissions() below). Direct port of the Rider
+            // app's identical callback.
+            override fun onGeolocationPermissionsShowPrompt(origin: String, callback: GeolocationPermissions.Callback) {
+                val hasFineLocation = ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+                if (hasFineLocation) {
+                    callback.invoke(origin, true, false)
+                } else {
+                    pendingGeoCallback = callback
+                    pendingGeoOrigin = origin
+                    requestRuntimePermissions()
+                }
+            }
+
             // Lets product-photo / KYC-document <input type="file"> fields on
             // the Vendor Dashboard open the phone's normal camera/gallery
             // picker -- same bridge as the Rider app's identical callback.
@@ -322,12 +347,35 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun requestRuntimePermissions() {
+        // v1.0.1 ADDED -- needed for Axomify Location Gate's popup (see class
+        // doc comment above), direct port of the Rider app's identical logic.
+        val needed = mutableListOf<String>()
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            needed.add(Manifest.permission.ACCESS_FINE_LOCATION)
+        }
+        if (needed.isNotEmpty()) {
+            ActivityCompat.requestPermissions(this, needed.toTypedArray(), REQ_LOCATION)
+        }
+
         // Android 13+ (API 33) requires this before ANY notification can be
         // shown at all.
         if (Build.VERSION.SDK_INT >= 33 &&
             ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
         ) {
             ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), REQ_NOTIFICATIONS)
+        }
+    }
+
+    // v1.0.1 ADDED -- direct port of the Rider app's identical callback.
+    // Resolves the WebChromeClient's pending geolocation callback (above)
+    // once the Android OS runtime-permission dialog is answered.
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == REQ_LOCATION) {
+            val granted = grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED
+            pendingGeoCallback?.invoke(pendingGeoOrigin, granted, false)
+            pendingGeoCallback = null
+            pendingGeoOrigin = null
         }
     }
 
