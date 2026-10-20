@@ -1,13 +1,15 @@
-// Axomify Rider -- root Gradle build file.
+// Axomify Mart Seller -- root Gradle build file.
 //
-// This project is deliberately a THIN NATIVE WRAPPER, not a rewrite of the Rider
-// Dashboard. All of the real UI/logic (duty toggle, live orders, chat, cash deposit,
-// KYC, everything) stays exactly where it already lives -- the WordPress site's own
-// frontend/views/rider-dashboard.php, loaded here inside a single WebView. The ONLY
-// reason this native app exists at all is the one thing a website/PWA can never do:
-// play a CUSTOM, LOUD siren sound automatically when the app is fully closed (not
-// just backgrounded). See MainActivity.kt and AxomifyApplication.kt for how that
-// piece works. Everything else is standard "wrap my website" boilerplate.
+// This project is deliberately a THIN NATIVE WRAPPER, not a rewrite of the Vendor
+// Dashboard -- a direct architectural sibling of the existing Axomify Mart Rider
+// app. All of the real UI/logic (orders, products, earnings, chat, everything) stays
+// exactly where it already lives -- the WordPress site's own
+// vendor/views/dashboard.php, loaded here inside a single WebView. Phase 1 scope
+// (owner's own words): "Rider jaisa poora shell (splash + exit-fix + FCM-ready)" --
+// full shell parity with the Rider app's splash, white-screen fix, exit-to-browser
+// fix, and FCM token registration, WITHOUT the Rider app's siren/MediaPlayer logic
+// (that's Phase 2 -- new-order alerts for vendors -- explicitly deferred, and not
+// yet even sent by the backend). See MainActivity.kt and AxomifyApplication.kt.
 plugins {
     id("com.android.application") version "8.7.2" apply false
     id("com.google.gms.google-services") version "4.4.2" apply false

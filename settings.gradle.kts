@@ -13,5 +13,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Axomify Rider"
+rootProject.name = "Axomify Mart Seller"
 include(":app")
