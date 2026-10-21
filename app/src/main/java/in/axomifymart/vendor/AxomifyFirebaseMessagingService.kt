@@ -116,6 +116,20 @@ import com.google.firebase.messaging.RemoteMessage
  *    PRIORITY_DEFAULT treatment any other plain notification gets, which
  *    should not trigger that OEM alarm-sound behavior. The v1.0.8 temporary
  *    debug line has been removed -- it did its job.
+ *
+ *    v1.0.10 CHANGED (2026-10-21): owner-reported -- even after v1.0.9, a
+ *    "Send Announcement" notification still VIBRATED. Category/priority (the
+ *    v1.0.9 fix) has no effect on vibration at all -- vibration is entirely a
+ *    property of the notification CHANNEL (see AxomifyApplication.kt), and
+ *    every notification was still being posted to the one siren channel,
+ *    whose `enableVibration(true)` + custom pattern apply regardless of
+ *    category/priority. Fixed by posting an `'announcement'` message to a
+ *    brand-new, separate `AxomifyApplication.ANNOUNCEMENT_CHANNEL_ID` channel
+ *    instead -- no vibration, and no explicit sound override either, so
+ *    Android plays the device's own normal default notification tune, same
+ *    as any other ordinary app notification. A genuine `'order_alert'` keeps
+ *    using the existing siren channel (`AxomifyApplication.CHANNEL_ID`),
+ *    completely unchanged.
  */
 class AxomifyFirebaseMessagingService : FirebaseMessagingService() {
 
@@ -162,19 +176,24 @@ class AxomifyFirebaseMessagingService : FirebaseMessagingService() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
+        // v1.0.10 CHANGED -- see this class's own v1.0.10 doc comment above.
+        // Vibration is a CHANNEL property, not a category/priority one -- so an
+        // announcement now gets posted to a completely separate channel with no
+        // vibration and no silence, rather than the order-siren channel.
+        val channelId = if (alertType == "order_alert") {
+            AxomifyApplication.CHANNEL_ID
+        } else {
+            AxomifyApplication.ANNOUNCEMENT_CHANNEL_ID
+        }
+
         val notificationId = System.currentTimeMillis().toInt()
-        val notificationBuilder = NotificationCompat.Builder(this, AxomifyApplication.CHANNEL_ID)
+        val notificationBuilder = NotificationCompat.Builder(this, channelId)
             .setSmallIcon(R.drawable.ic_notification)
             .setColor(getColor(R.color.axomify_gold))
             .setContentTitle(title)
             .setContentText(body)
             .setAutoCancel(true)
             .setContentIntent(contentIntent)
-            // Vibration/lights/heads-up come from the CHANNEL (see
-            // AxomifyApplication.kt) -- the channel is deliberately silent on
-            // sound, since playSirenDirectly() below handles the siren itself for
-            // a real order alert.
-            .setDefaults(NotificationCompat.DEFAULT_VIBRATE)
 
         // v1.0.9 CHANGED -- owner-reported the siren STILL played on a "Send
         // Announcement" test even with v1.0.8 proving (via a temporary on-screen
@@ -200,14 +219,28 @@ class AxomifyFirebaseMessagingService : FirebaseMessagingService() {
         // CATEGORY_MESSAGE + PRIORITY_DEFAULT treatment every other plain
         // notification on the device gets, which should not trigger that OEM
         // alarm-sound behavior.
+        //
+        // v1.0.10 CHANGED -- the .setDefaults() flag below only matters on
+        // Android versions OLDER than 8.0 (API 26), which have no notification
+        // channel concept at all -- on API 26+ (this app's target range in
+        // practice) the channel assigned above (CHANNEL_ID or
+        // ANNOUNCEMENT_CHANNEL_ID) is what actually controls sound/vibration, and
+        // this flag is ignored by the OS. It is still set correctly here anyway,
+        // for the sake of the handful of API 24-25 devices this app's minSdk
+        // still supports: DEFAULT_VIBRATE for a real order alert (silence
+        // elsewhere, since playSirenDirectly() plays the siren itself), and
+        // DEFAULT_SOUND -- not vibrate -- for an announcement, so even a pre-8.0
+        // device plays an ordinary default notification sound with no vibration.
         if (alertType == "order_alert") {
             notificationBuilder
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setCategory(NotificationCompat.CATEGORY_ALARM)
+                .setDefaults(NotificationCompat.DEFAULT_VIBRATE)
         } else {
             notificationBuilder
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                 .setCategory(NotificationCompat.CATEGORY_MESSAGE)
+                .setDefaults(NotificationCompat.DEFAULT_SOUND)
         }
 
         val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
