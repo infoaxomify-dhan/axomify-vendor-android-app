@@ -69,12 +69,20 @@ class MainActivity : AppCompatActivity() {
         private const val REQ_NOTIFICATIONS = 1002
         private const val TAG = "AxomifyVendorUpdateCheck"
 
-        // Same safety-net reasoning as the Rider app's identical constant
-        // (see that app's MainActivity.kt v1.3.12 note) -- caps how long the
-        // splash overlay can ever stay up if the page somehow never finishes
-        // loading (dead internet, site down), without affecting a normal-
-        // speed load at all.
-        private const val SPLASH_SAFETY_TIMEOUT_MS = 4000L
+        // v1.0.6 (2026-10-21): owner-reported, same symptom already fixed on the
+        // Rider app in its own v1.3.15 -- "white screen after splash, sometimes
+        // stuck, never reaches [Vendor] dashboard." Same root cause, direct port
+        // of that same fix: the Vendor Dashboard page is also an always-fresh,
+        // uncached server render (DONOTCACHEPAGE), so on a slower render this
+        // 4000ms safety timeout could fire and drop the splash overlay BEFORE
+        // onPageFinished() ever got a chance to, revealing the WebView's own
+        // blank-white background underneath. Raised to 7000ms -- gives a slower
+        // render more room to finish before the overlay drops on its own, while
+        // still hard-capping a genuinely dead connection/site-down case at 7s.
+        // (Original safety-net reasoning, still true: caps how long the splash
+        // overlay can ever stay up if the page somehow never finishes loading at
+        // all, without affecting a normal-speed load either way.)
+        private const val SPLASH_SAFETY_TIMEOUT_MS = 7000L
     }
 
     private lateinit var webView: WebView
