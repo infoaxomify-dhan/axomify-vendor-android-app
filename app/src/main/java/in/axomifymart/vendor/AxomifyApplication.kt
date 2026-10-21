@@ -46,16 +46,38 @@ import android.os.Build
  * constant if/when a Vendor-specific one is ever added there (not needed as of
  * this version -- see this app's own AxomifyFirebaseMessagingService.kt v1.0.4
  * doc comment for why the backend needed ZERO changes for this release).
+ *
+ * v1.0.10 ADDED (2026-10-21) -- owner-reported: even after v1.0.9 stopped the
+ * siren/alarm sound on a "Send Announcement" push, the notification still
+ * VIBRATED, and the owner wants an announcement to behave exactly like any
+ * other ordinary app notification instead -- no vibration, and the phone's
+ * own normal default notification tune playing, not silence and not the
+ * siren. The CHANNEL above was never the problem for sound (v1.0.9 already
+ * fixed that at the category/priority level), but its VIBRATION setting
+ * (`enableVibration(true)` + a custom pattern, right below) applies to EVERY
+ * notification posted to this channel, order alert or announcement alike --
+ * category/priority has no effect on vibration at all, which is exactly why
+ * v1.0.9 alone did not stop it. Since a channel's configuration is locked
+ * forever once created on a seller's phone (see the IMPORTANT ANDROID QUIRK
+ * note above), the only correct fix is a brand-new, SEPARATE channel
+ * dedicated to announcements -- see `ANNOUNCEMENT_CHANNEL_ID` and
+ * `createAnnouncementChannel()` below. `AxomifyFirebaseMessagingService.kt`'s
+ * own v1.0.10 doc comment covers how `onMessageReceived()` now picks between
+ * the two channels.
  */
 class AxomifyApplication : Application() {
 
     companion object {
         const val CHANNEL_ID = "axomify_vendor_order_siren_v1"
+
+        // v1.0.10 ADDED -- see this class's own v1.0.10 doc comment above.
+        const val ANNOUNCEMENT_CHANNEL_ID = "axomify_vendor_announcement_v1"
     }
 
     override fun onCreate() {
         super.onCreate()
         createOrderSirenChannel()
+        createAnnouncementChannel()
     }
 
     private fun createOrderSirenChannel() {
@@ -88,6 +110,40 @@ class AxomifyApplication : Application() {
             vibrationPattern = longArrayOf(0, 1000, 500, 1000, 500, 1000, 500, 1000)
             enableLights(true)
             setBypassDnd(false) // Left off by default -- a seller can turn this on themselves per-channel in Android's own Settings if they want it.
+        }
+
+        manager.createNotificationChannel(channel)
+    }
+
+    /**
+     * v1.0.10 ADDED -- see this class's own v1.0.10 doc comment above. A plain
+     * admin "Send Announcement" push should feel like ANY other ordinary app
+     * notification: no siren, no vibration, just the phone's own normal
+     * default notification tune. DEFAULT importance (not HIGH) -- it shows in
+     * the shade and plays a sound, but does not "heads-up" pop over whatever
+     * the seller is doing, matching a plain, non-urgent announcement rather
+     * than a time-critical order alert.
+     */
+    private fun createAnnouncementChannel() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+
+        val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+        val channel = NotificationChannel(
+            ANNOUNCEMENT_CHANNEL_ID,
+            "Announcements",
+            NotificationManager.IMPORTANCE_DEFAULT
+        ).apply {
+            description = "Plain notifications for admin announcements -- no siren, no vibration, just your phone's normal default notification sound, same as any other app."
+            // Deliberately NOT calling setSound() here. Leaving it unset is what
+            // makes Android use the DEVICE'S OWN system default notification sound
+            // (Settings -> Sound -> Default notification sound) -- the exact
+            // opposite of the siren channel above, which explicitly calls
+            // setSound(null, null) to go silent on purpose. This channel wants
+            // neither silence nor a custom siren, just the ordinary default tune.
+            enableVibration(false)
+            enableLights(false)
+            setBypassDnd(false)
         }
 
         manager.createNotificationChannel(channel)
