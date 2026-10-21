@@ -52,17 +52,70 @@ import com.google.firebase.messaging.RemoteMessage
  *    knowing how to play a real siren when a message arrived -- Phase 1 just
  *    showed a plain notification with the channel's old default sound.
  *
- *    Because the only thing Axomify Marketplace currently ever pushes to a
- *    vendor is this one "new order" event (confirmed: no other
- *    Axomify_Core_Push::send()/broadcast() call site targets a vendor user, as
- *    of Marketplace v1.1.159), this plays the siren for EVERY data message
- *    received, same as Rider's own unconditional approach -- if a second,
- *    non-siren vendor push type is ever added later, this method should start
- *    checking a `type` field in the data payload before deciding whether to
- *    play the siren.
+ *    As of v1.0.4, the only thing Axomify Marketplace ever pushed to a vendor
+ *    was this one "new order" event, so this played the siren for EVERY data
+ *    message received, same as Rider's own then-unconditional approach. That
+ *    second, non-siren vendor push type this comment anticipated did show up
+ *    (Axomify Core's own "Send Announcement" admin tool) -- see this class's
+ *    own v1.0.7 doc comment below for the actual `alert_type`-based fix.
  *
  *    The duplicate-message guard is kept from the Rider app's own hard-won lesson
  *    (FCM's "at least once", not exactly-once, delivery guarantee).
+ *
+ *    v1.0.7 FIXED (2026-10-21): owner-reported -- Axomify Core's own admin "Send
+ *    Announcement" broadcast tool was ALSO making this siren play, which makes
+ *    no sense for a plain admin message (only a real new-order event should).
+ *    This is exactly the "if a second, non-siren vendor push type is ever added
+ *    later" case this class's own v1.0.4 doc comment above already flagged --
+ *    Axomify Core v1.3.27's `class-fcm-push.php` now adds a plain `alert_type`
+ *    field ('order_alert' | 'announcement') to every data message it sends.
+ *    `onMessageReceived()` below now only calls `playSirenDirectly()` when that
+ *    field is `'order_alert'` (or missing entirely, for backward compatibility
+ *    with an un-updated Core plugin -- the siren is the long-standing default
+ *    behavior, so an absent field keeps today's exact behavior). An
+ *    `'announcement'` message still shows a normal notification (title/body/
+ *    vibration, tap-to-open) -- it just never plays the siren or holds the wake
+ *    lock for it. Direct port of the same fix in the Rider app's own
+ *    AxomifyFirebaseMessagingService.kt (v1.3.16).
+ *
+ *    v1.0.8 TEMPORARY DIAGNOSTIC (2026-10-21, REMOVED in v1.0.9): owner
+ *    re-tested v1.0.7 from the actual "Send Announcement" page and reported
+ *    the siren STILL plays. Every code path was re-read end to end looking for
+ *    a real bug and found none: Axomify Core's broadcast() -> send_to_user()
+ *    -> send_to_token() all correctly pass 'announcement'; this class's own
+ *    alert_type gating was correct and byte-for-byte parallel to the Rider
+ *    app's confirmed-working v1.3.16; the three sibling plugins' own
+ *    `axomify_core_announcement_sent` listeners only write to an in-app
+ *    Notification Center, never trigger a second push; the installed app
+ *    version was confirmed 1.0.7; caching was confirmed cleared; only ONE
+ *    device token was registered; a coincidental real order was ruled out.
+ *    v1.0.8 added a temporary debug line to the notification text itself
+ *    (`alert_type received: '...'`), shown only when the value was not
+ *    'order_alert', so the owner could read the raw received value straight
+ *    off their phone. It showed `'announcement'` -- confirming the server
+ *    sent, and the app received, the correct value, and that
+ *    playSirenDirectly() correctly did NOT run. The Vendor Dashboard's own
+ *    Notification Center was then checked directly and showed no
+ *    "New Order Received" entry at all -- ruling out a second, real push too.
+ *
+ *    v1.0.9 FIXED (2026-10-21): with the custom-siren gate itself proven
+ *    correct and every other candidate ruled out, the remaining culprit was
+ *    found by re-reading the notification-building code one more time: EVERY
+ *    notification this class ever built -- real order alert or plain
+ *    announcement alike -- was unconditionally marked
+ *    `.setPriority(PRIORITY_HIGH)` + `.setCategory(CATEGORY_ALARM)`. Several
+ *    Android OEM skins (MIUI/Xiaomi, ColorOS/Oppo, FuntouchOS/Vivo -- common
+ *    on real seller phones in India) are documented to play their OWN system
+ *    alarm sound for an ALARM-category notification, overriding the
+ *    channel's configured silence -- entirely independent of, and bypassing,
+ *    this app's own MediaPlayer-based siren gate. That explains "my own
+ *    siren code never ran (confirmed by v1.0.8's own debug line), yet the
+ *    phone still made an alarm-like sound" exactly. onMessageReceived() below
+ *    now only applies CATEGORY_ALARM + PRIORITY_HIGH for a genuine
+ *    'order_alert'; an 'announcement' gets the ordinary CATEGORY_MESSAGE +
+ *    PRIORITY_DEFAULT treatment any other plain notification gets, which
+ *    should not trigger that OEM alarm-sound behavior. The v1.0.8 temporary
+ *    debug line has been removed -- it did its job.
  */
 class AxomifyFirebaseMessagingService : FirebaseMessagingService() {
 
@@ -84,6 +137,13 @@ class AxomifyFirebaseMessagingService : FirebaseMessagingService() {
         val title = message.data["title"] ?: "Axomify Mart Seller"
         val body = message.data["body"] ?: ""
 
+        // v1.0.9 ADDED -- see this class's own v1.0.9 doc comment above for the full
+        // diagnosis. Computed once, right here, and used below for BOTH the
+        // notification's category/priority AND the siren decision -- the real
+        // v1.0.9 fix is that the category/priority line now depends on this too,
+        // not just the siren call.
+        val alertType = message.data["alert_type"] ?: "order_alert"
+
         // Tapping the notification opens the app (via SplashActivity, the real
         // launcher). FLAG_ACTIVITY_NEW_TASK is required when starting an Activity
         // from a Service context like this one; FLAG_ACTIVITY_CLEAR_TOP avoids
@@ -103,26 +163,64 @@ class AxomifyFirebaseMessagingService : FirebaseMessagingService() {
         )
 
         val notificationId = System.currentTimeMillis().toInt()
-        val notification = NotificationCompat.Builder(this, AxomifyApplication.CHANNEL_ID)
+        val notificationBuilder = NotificationCompat.Builder(this, AxomifyApplication.CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
             .setColor(getColor(R.color.axomify_gold))
             .setContentTitle(title)
             .setContentText(body)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setAutoCancel(true)
             .setContentIntent(contentIntent)
             // Vibration/lights/heads-up come from the CHANNEL (see
             // AxomifyApplication.kt) -- the channel is deliberately silent on
-            // sound, since playSirenDirectly() below handles that instead.
+            // sound, since playSirenDirectly() below handles the siren itself for
+            // a real order alert.
             .setDefaults(NotificationCompat.DEFAULT_VIBRATE)
-            .build()
+
+        // v1.0.9 CHANGED -- owner-reported the siren STILL played on a "Send
+        // Announcement" test even with v1.0.8 proving (via a temporary on-screen
+        // debug line, since removed) that this device correctly received
+        // alert_type='announcement' and that playSirenDirectly() below correctly
+        // did NOT run for it. With the app's own custom-siren gate proven
+        // correct, and every other candidate (stale build, wrong admin tool,
+        // caching, a duplicate token, a coincidental real order, a second push of
+        // any kind) ruled out one by one (including checking the Vendor
+        // Dashboard's own server-side Notification Center, which logs every real
+        // order-alert push and showed none), the remaining explanation is that
+        // EVERY notification this method built -- order alert or plain
+        // announcement alike -- was unconditionally marked
+        // `.setPriority(PRIORITY_HIGH)` + `.setCategory(CATEGORY_ALARM)`. Several
+        // Android OEM skins (MIUI/Xiaomi, ColorOS/Oppo, FuntouchOS/Vivo -- common
+        // on real seller phones) are documented to play their OWN system alarm
+        // sound for an ALARM-category notification, overriding the channel's
+        // configured silence entirely -- independent of, and bypassing, this
+        // app's own MediaPlayer-based siren gate below. That would explain
+        // "my own siren code never ran, yet the phone still made an alarm-like
+        // sound" exactly. Fix: CATEGORY_ALARM + PRIORITY_HIGH are now applied
+        // ONLY for a genuine order alert; an announcement gets the ordinary
+        // CATEGORY_MESSAGE + PRIORITY_DEFAULT treatment every other plain
+        // notification on the device gets, which should not trigger that OEM
+        // alarm-sound behavior.
+        if (alertType == "order_alert") {
+            notificationBuilder
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setCategory(NotificationCompat.CATEGORY_ALARM)
+        } else {
+            notificationBuilder
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setCategory(NotificationCompat.CATEGORY_MESSAGE)
+        }
 
         val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        manager.notify(notificationId, notification)
+        manager.notify(notificationId, notificationBuilder.build())
         activeNotificationId = notificationId
 
-        playSirenDirectly()
+        // v1.0.7 ADDED -- see this class's own v1.0.7 doc comment above. Only a
+        // real new-order event ('order_alert', or no field at all from an
+        // un-updated Core plugin) gets the siren; an admin 'announcement' just
+        // shows the plain notification built above, with no siren.
+        if (alertType == "order_alert") {
+            playSirenDirectly()
+        }
     }
 
     /**
