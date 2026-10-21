@@ -20,44 +20,35 @@ android {
         applicationId = "in.axomifymart.vendor"
         minSdk = 24 // Android 7.0+ -- same floor as the Rider app, covers the overwhelming majority of real seller phones.
         targetSdk = 35
-        versionCode = 9
+        versionCode = 10
         /*
-         * v1.0.8 (2026-10-21) TEMPORARY DIAGNOSTIC BUILD -- previous attempt at this
-         * same bump used a single very long `//` line comment here, which broke
-         * (GitHub Actions build failed with "Unresolved reference" x20) the moment it
-         * got line-wrapped by a copy/paste somewhere along the way -- a `//` comment
-         * only runs to the end of its own physical line, so once that line split in
-         * two, everything after the break became real (broken) Kotlin code instead of
-         * a comment. A block comment like this one is immune to that: it is only
-         * ever closed by its own closing-comment marker, never by a line break, no
-         * matter how the text gets reflowed by an editor, a terminal, or a
-         * copy/paste. See this file's
-         * own git history for the full per-version changelog text (v1.0.0-v1.0.7) --
-         * kept out of this comment block from here on specifically to avoid ever
-         * reproducing this same fragile-long-single-line failure mode again.
+         * v1.0.9 (2026-10-21) -- REAL FIX for the "siren still plays on Send
+         * Announcement" saga (full per-version changelog, v1.0.0-v1.0.8, kept in
+         * this file's own git history, not repeated here -- see
+         * AxomifyFirebaseMessagingService.kt's own v1.0.9 doc comment for the
+         * complete diagnosis). Short version: v1.0.8's temporary on-screen debug
+         * line proved this app's own custom-siren gate (alert_type == 'order_alert')
+         * was already correct -- it never ran for an announcement. The real bug
+         * was that EVERY notification, order alert or announcement alike, was
+         * unconditionally built with PRIORITY_HIGH + CATEGORY_ALARM -- some Android
+         * OEM skins (MIUI/Xiaomi, ColorOS/Oppo, FuntouchOS/Vivo) play their OWN
+         * system alarm sound for an ALARM-category notification, bypassing this
+         * app's deliberately silent channel entirely, independent of whether this
+         * app's own MediaPlayer siren ran. onMessageReceived() now only applies
+         * PRIORITY_HIGH/CATEGORY_ALARM for a genuine order alert; an announcement
+         * gets ordinary PRIORITY_DEFAULT/CATEGORY_MESSAGE. The v1.0.8 temporary
+         * debug line has been removed now that it has served its purpose.
          *
-         * This v1.0.8 release itself: owner re-tested v1.0.7's siren fix from the
-         * actual "Send Announcement" page (not the separate "Native App (FCM) ->
-         * Send test notification" tool, which deliberately plays the siren by
-         * design) and reported the siren STILL plays. Every code path was re-read
-         * end to end and ruled out: Axomify Core's broadcast()/send_to_user()/
-         * send_to_token() all correctly pass 'announcement'; this app's own
-         * onMessageReceived() gating is correct and parallel to the Rider app's own
-         * confirmed-working fix; all 3 sibling plugins' `axomify_core_announcement_sent`
-         * hook listeners only log to an in-app Notification Center, never trigger a
-         * second push; the installed app version was confirmed 1.0.7 via Settings ->
-         * Apps; caching was confirmed already cleared; the FCM admin page confirmed
-         * only ONE device token registered (no stale/duplicate token); and a
-         * coincidental real order was ruled out too. With no remaining code-level
-         * explanation, AxomifyFirebaseMessagingService.kt's onMessageReceived() now
-         * appends the RAW alert_type value it actually received to the notification
-         * text, but ONLY when it is not 'order_alert' (the branch under
-         * investigation) -- a real new-order alert's notification stays completely
-         * untouched, zero risk to the live flow sellers depend on daily. This is
-         * diagnostic-only and MUST be reverted once the owner reports what the next
-         * test's notification actually shows.
+         * NOTE for future edits to this versionName comment: keep it as a block
+         * comment like this one (opening and closing comment markers, each on
+         * their own line, as used throughout this file), never a long trailing
+         * double-slash line comment -- v1.0.8's first attempt at this same bump
+         * used exactly that and the GitHub Actions build failed with about 20
+         * "Unresolved reference" errors when that one very long line got
+         * line-wrapped by a copy and paste somewhere along the way. A block
+         * comment is immune to that failure mode.
          */
-        versionName = "1.0.8"
+        versionName = "1.0.9"
     }
 
     // v1.3.0 ADDED -- a stable, owner-owned release signing key. WHY THIS MATTERS:
