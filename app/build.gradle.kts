@@ -20,23 +20,21 @@ android {
         applicationId = "in.axomifymart.vendor"
         minSdk = 24 // Android 7.0+ -- same floor as the Rider app, covers the overwhelming majority of real seller phones.
         targetSdk = 35
-        versionCode = 11
+        versionCode = 12
         /*
-         * v1.0.10 (2026-10-21) -- owner-reported that even after v1.0.9 stopped
-         * the siren/alarm sound on "Send Announcement," the notification still
-         * vibrated. Category/priority (the v1.0.9 fix) never controlled
-         * vibration -- that is purely a notification-CHANNEL property, and every
-         * notification was still being posted to the one siren channel, whose
-         * vibration setting applies no matter what category/priority it carries.
-         * Fixed by giving an announcement its own brand-new notification channel
-         * (AxomifyApplication.ANNOUNCEMENT_CHANNEL_ID) -- no vibration, and no
-         * sound explicitly set either, so Android plays the device's own normal
-         * default notification tune, exactly like any other ordinary app
-         * notification. A genuine order alert keeps using the existing siren
-         * channel, completely unchanged. See AxomifyApplication.kt and
-         * AxomifyFirebaseMessagingService.kt's own v1.0.10 doc comments for the
-         * full detail; earlier per-version history (v1.0.0-v1.0.9) is kept in
-         * this file's own git history, not repeated here.
+         * v1.0.11 (2026-10-22) -- two owner-reported fixes bundled together,
+         * direct ports of the Rider app's own identical v1.3.21 fixes (see
+         * MainActivity.kt and AxomifyFirebaseMessagingService.kt's own
+         * v1.0.7/v1.0.11 doc comments here for the full diagnosis):
+         * (1) the real root cause of "splash ke baad white screen" on this
+         * app too -- loadUrl() was being skipped whenever Android restored
+         * this Activity after killing the app's process in the background
+         * (this app's manifest already disables Activity recreation on
+         * rotation, so that was the ONLY time the old savedInstanceState
+         * guard ever mattered) -- now always loads if the WebView is still
+         * empty, plus a new onRenderProcessGone() safety net. (2) "Send
+         * Announcement" images now actually reach the notification, via a
+         * new background-downloaded BigPictureStyle upgrade.
          *
          * NOTE for future edits to this versionName comment: keep it as a block
          * comment like this one (opening and closing comment markers, each on
@@ -47,7 +45,7 @@ android {
          * line-wrapped by a copy and paste somewhere along the way. A block
          * comment is immune to that failure mode.
          */
-        versionName = "1.0.10"
+        versionName = "1.0.11"
     }
 
     // v1.3.0 ADDED -- a stable, owner-owned release signing key. WHY THIS MATTERS:
