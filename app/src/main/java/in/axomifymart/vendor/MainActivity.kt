@@ -132,7 +132,20 @@ class MainActivity : AppCompatActivity() {
 
         Handler(Looper.getMainLooper()).postDelayed({ hideSplashOverlay() }, SPLASH_SAFETY_TIMEOUT_MS)
 
-        if (savedInstanceState == null) {
+        // v1.0.7 FIXED (2026-10-22) -- owner-reported, same symptom as the
+        // Rider app's own v1.3.21 fix (identical root cause, see that file's
+        // doc comment for the full diagnosis) -- "Same problem Axomify Mart
+        // Seller App mei bhi" (owner's own words). NOT a splash-timing bug:
+        // this Activity's manifest already declares
+        // android:configChanges="orientation|screenSize|keyboardHidden", so
+        // `savedInstanceState` is only ever non-null when Android killed
+        // this app's process in the background and restored it later -- and
+        // in exactly that case, the old `savedInstanceState == null` guard
+        // skipped loadUrl() on the brand-new, blank WebView created just
+        // above, leaving it permanently empty once the safety timeout hid
+        // the splash. Fixed the same way: always load whenever this fresh
+        // WebView has nothing in it yet.
+        if (webView.url.isNullOrEmpty()) {
             webView.loadUrl(START_URL)
         }
     }
@@ -316,6 +329,20 @@ class MainActivity : AppCompatActivity() {
                 if (request.isForMainFrame) {
                     hideSplashOverlay()
                 }
+            }
+
+            // v1.0.7 ADDED (2026-10-22) -- direct port of the Rider app's
+            // identical v1.3.21 fix: recovers if the WebView's own renderer
+            // process is killed by Android (low-memory devices), instead of
+            // leaving a permanently blank surface or crashing the app.
+            override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
+                Log.d(TAG, "WebView render process gone (crashed=${detail.didCrash()}) -- recreating Activity")
+                if (view.parent != null) {
+                    (view.parent as? android.view.ViewGroup)?.removeView(view)
+                }
+                view.destroy()
+                recreate()
+                return true
             }
         }
 
