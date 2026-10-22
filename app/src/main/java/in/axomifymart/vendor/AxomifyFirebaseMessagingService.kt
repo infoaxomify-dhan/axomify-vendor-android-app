@@ -4,6 +4,8 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.media.AudioAttributes
 import android.media.MediaPlayer
 import android.os.PowerManager
@@ -11,6 +13,8 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
+import java.net.HttpURLConnection
+import java.net.URL
 
 /**
  * Two separate jobs, deliberately kept narrow:
@@ -130,6 +134,15 @@ import com.google.firebase.messaging.RemoteMessage
  *    as any other ordinary app notification. A genuine `'order_alert'` keeps
  *    using the existing siren channel (`AxomifyApplication.CHANNEL_ID`),
  *    completely unchanged.
+ *
+ *    v1.0.11 ADDED (2026-10-22): direct port of the Rider app's identical
+ *    v1.3.21 fix -- owner-reported, the "Send Announcement" image never
+ *    reached the notification on this app either. Axomify Core v1.3.28 now
+ *    forwards an optional 'image' data key. The plain title/body notification
+ *    still shows immediately as before; if an image URL is present, it is
+ *    downloaded on a background Thread and, on success, the SAME
+ *    notification id is re-posted with a BigPictureStyle version. A failed
+ *    download silently leaves the plain notification as-is.
  */
 class AxomifyFirebaseMessagingService : FirebaseMessagingService() {
 
@@ -254,6 +267,47 @@ class AxomifyFirebaseMessagingService : FirebaseMessagingService() {
         if (alertType == "order_alert") {
             playSirenDirectly()
         }
+
+        // v1.0.11 ADDED -- see this class's own v1.0.11 doc comment above.
+        val imageUrl = message.data["image"] ?: ""
+        if (imageUrl.isNotBlank()) {
+            loadImageAndUpgradeNotification(imageUrl, notificationBuilder, notificationId, manager)
+        }
+    }
+
+    /**
+     * v1.0.11 ADDED -- direct port of the Rider app's identical v1.3.21 method.
+     * Downloads the announcement's optional hero image on a background Thread
+     * (never on the caller's thread) and, only on success, re-posts the SAME
+     * notification id with a BigPictureStyle. Bounded by an 8-second
+     * connect/read timeout -- a slow/dead image host must never hang this
+     * indefinitely; the plain notification already shown is a fine fallback.
+     */
+    private fun loadImageAndUpgradeNotification(
+        imageUrl: String,
+        builder: NotificationCompat.Builder,
+        notificationId: Int,
+        manager: NotificationManager
+    ) {
+        Thread {
+            try {
+                val connection = (URL(imageUrl).openConnection() as HttpURLConnection).apply {
+                    connectTimeout = 8000
+                    readTimeout = 8000
+                }
+                val bitmap: Bitmap? = connection.inputStream.use { BitmapFactory.decodeStream(it) }
+                connection.disconnect()
+                if (bitmap != null) {
+                    val updated = builder
+                        .setLargeIcon(bitmap)
+                        .setStyle(NotificationCompat.BigPictureStyle().bigPicture(bitmap))
+                        .build()
+                    manager.notify(notificationId, updated)
+                }
+            } catch (e: Exception) {
+                Log.d(TAG, "Announcement image download skipped: ${e.message}")
+            }
+        }.start()
     }
 
     /**
