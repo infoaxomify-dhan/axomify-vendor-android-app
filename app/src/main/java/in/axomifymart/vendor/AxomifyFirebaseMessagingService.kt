@@ -8,6 +8,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.media.AudioAttributes
 import android.media.MediaPlayer
+import android.net.Uri
 import android.os.PowerManager
 import android.util.Log
 import androidx.core.app.NotificationCompat
@@ -143,6 +144,19 @@ import java.net.URL
  *    downloaded on a background Thread and, on success, the SAME
  *    notification id is re-posted with a BigPictureStyle version. A failed
  *    download silently leaves the plain notification as-is.
+ *
+ *    v1.0.12 ADDED (2026-10-22): direct port of the Rider app's identical
+ *    v1.3.22 fix (owner's 3-item batch -- see that file's own v1.3.22 doc
+ *    comment for the owner's exact wording). This app's "App Updates" admin
+ *    page shares the same role-aware `class-app-update-admin.php` as the
+ *    Rider app's, so an `'app_update'` push can arrive here too -- tapping
+ *    it now opens the APK download URL directly (via the `url` data field)
+ *    instead of launching the app. The `'order_missed'` handling (stop any
+ *    active siren) and the `order_id`-based stable/replaceable notification
+ *    id are also ported for consistency with the Rider app, even though
+ *    nothing in this app's own backend sends an `'order_missed'` push today
+ *    (only the Rider plugin's order-assignment flow does) -- harmless if
+ *    unused, and ready if that ever changes.
  */
 class AxomifyFirebaseMessagingService : FirebaseMessagingService() {
 
@@ -171,6 +185,10 @@ class AxomifyFirebaseMessagingService : FirebaseMessagingService() {
         // not just the siren call.
         val alertType = message.data["alert_type"] ?: "order_alert"
 
+        // v1.0.12 ADDED -- direct port of the Rider app's identical v1.3.22
+        // fix. Only present on an 'app_update' push; the direct APK download link.
+        val updateUrl = message.data["url"] ?: ""
+
         // Tapping the notification opens the app (via SplashActivity, the real
         // launcher). FLAG_ACTIVITY_NEW_TASK is required when starting an Activity
         // from a Service context like this one; FLAG_ACTIVITY_CLEAR_TOP avoids
@@ -179,15 +197,33 @@ class AxomifyFirebaseMessagingService : FirebaseMessagingService() {
         // PendingIntent that doesn't need to be modified by the receiving app
         // (which this one doesn't) -- safe on this app's minSdk 24, since the
         // flag itself has existed since API 23.
-        val launchIntent = Intent(this, SplashActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        //
+        // v1.0.12 CHANGED -- direct port of the Rider app's identical v1.3.22
+        // fix: an 'app_update' push now opens the APK download URL directly
+        // (ACTION_VIEW, same as tapping a browser download link) instead of
+        // launching the app. Falls back to the ordinary SplashActivity launch
+        // if the url is missing for any reason.
+        val contentIntent = if (alertType == "app_update" && updateUrl.isNotBlank()) {
+            val downloadIntent = Intent(Intent.ACTION_VIEW, Uri.parse(updateUrl)).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            PendingIntent.getActivity(
+                this,
+                0,
+                downloadIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+        } else {
+            val launchIntent = Intent(this, SplashActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            }
+            PendingIntent.getActivity(
+                this,
+                0,
+                launchIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
         }
-        val contentIntent = PendingIntent.getActivity(
-            this,
-            0,
-            launchIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
 
         // v1.0.10 CHANGED -- see this class's own v1.0.10 doc comment above.
         // Vibration is a CHANNEL property, not a category/priority one -- so an
@@ -199,7 +235,17 @@ class AxomifyFirebaseMessagingService : FirebaseMessagingService() {
             AxomifyApplication.ANNOUNCEMENT_CHANNEL_ID
         }
 
-        val notificationId = System.currentTimeMillis().toInt()
+        // v1.0.12 CHANGED -- direct port of the Rider app's identical v1.3.22
+        // fix. When Core includes an `order_id`, derive a STABLE id from it so
+        // a later matching push (e.g. 'order_missed') replaces this one in
+        // place instead of stacking a second one. Any push without a (valid)
+        // order_id keeps the old always-fresh timestamp id.
+        val orderIdRaw = message.data["order_id"] ?: ""
+        val notificationId = if (orderIdRaw.isNotBlank()) {
+            orderIdRaw.toIntOrNull() ?: System.currentTimeMillis().toInt()
+        } else {
+            System.currentTimeMillis().toInt()
+        }
         val notificationBuilder = NotificationCompat.Builder(this, channelId)
             .setSmallIcon(R.drawable.ic_notification)
             .setColor(getColor(R.color.axomify_gold))
@@ -266,6 +312,11 @@ class AxomifyFirebaseMessagingService : FirebaseMessagingService() {
         // shows the plain notification built above, with no siren.
         if (alertType == "order_alert") {
             playSirenDirectly()
+        } else if (alertType == "order_missed") {
+            // v1.0.12 ADDED -- direct port of the Rider app's identical v1.3.22
+            // fix. Stops any still-playing native siren for an order that was
+            // never accepted in time.
+            stopActiveSiren(this)
         }
 
         // v1.0.11 ADDED -- see this class's own v1.0.11 doc comment above.
