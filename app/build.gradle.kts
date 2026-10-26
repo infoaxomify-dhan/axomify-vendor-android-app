@@ -20,8 +20,16 @@ android {
         applicationId = "in.axomifymart.vendor"
         minSdk = 24 // Android 7.0+ -- same floor as the Rider app, covers the overwhelming majority of real seller phones.
         targetSdk = 35
-        versionCode = 13
+        versionCode = 14
         /*
+         * v1.0.13 (2026-10-26) -- MainActivity.kt's START_URL only. Owner's
+         * explicit request: "Jab Vendor App open karta hoon toh tab Dashboard
+         * hi open hota hai. Pehele order tab open hona chahiye." START_URL now
+         * loads `?tab=orders` instead of no tab param (which the Vendor
+         * Dashboard plugin defaults to 'overview'/Dashboard) -- see that
+         * constant's own doc comment for the full detail. No other file
+         * touched this version.
+         *
          * v1.0.12 (2026-10-22) -- AxomifyFirebaseMessagingService.kt only,
          * direct port of the Rider app's own identical v1.3.22 fixes from
          * this same owner batch (see that file's own v1.0.12 doc comment
@@ -43,7 +51,7 @@ android {
          * line-wrapped by a copy and paste somewhere along the way. A block
          * comment is immune to that failure mode.
          */
-        versionName = "1.0.12"
+        versionName = "1.0.13"
     }
 
     // v1.3.0 ADDED -- a stable, owner-owned release signing key. WHY THIS MATTERS:
