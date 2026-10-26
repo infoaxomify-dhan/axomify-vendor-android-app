@@ -54,7 +54,20 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         // TODO: confirm/replace with the exact live Vendor Dashboard URL.
-        const val START_URL = "https://axomifymart.in/vendor-dashboard/"
+        //
+        // v1.0.1 CHANGED -- owner's explicit request: "Jab Vendor App open karta
+        // hoon toh tab Dashboard hi open hota hai. Pehele order tab open hona
+        // chahiye." (When I open the Vendor App, the Dashboard/Overview tab opens
+        // -- the Orders tab should open first instead.) The Vendor Dashboard's
+        // "tabs" are server-side routed by a `?tab=` query arg (Axomify
+        // Marketplace plugin, vendor/views/dashboard.php: `$tab = isset(
+        // $_GET['tab'] ) ? sanitize_text_field( $_GET['tab'] ) : 'overview';`) --
+        // no `tab` param falls back to 'overview' (Dashboard), exactly matching
+        // what the owner reported. Appending `?tab=orders` here is scoped
+        // entirely to this native app's own cold-start URL -- it does not change
+        // the plugin's own default for a normal browser visit (still 'overview'
+        // there, untouched) or anything else about the dashboard.
+        const val START_URL = "https://axomifymart.in/vendor-dashboard/?tab=orders"
 
         // Points at the NEW role-aware REST route added by Axomify Core
         // v1.3.25 specifically for this app -- a sibling of the Rider app's
