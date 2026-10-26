@@ -20,21 +20,19 @@ android {
         applicationId = "in.axomifymart.vendor"
         minSdk = 24 // Android 7.0+ -- same floor as the Rider app, covers the overwhelming majority of real seller phones.
         targetSdk = 35
-        versionCode = 12
+        versionCode = 13
         /*
-         * v1.0.11 (2026-10-22) -- two owner-reported fixes bundled together,
-         * direct ports of the Rider app's own identical v1.3.21 fixes (see
-         * MainActivity.kt and AxomifyFirebaseMessagingService.kt's own
-         * v1.0.7/v1.0.11 doc comments here for the full diagnosis):
-         * (1) the real root cause of "splash ke baad white screen" on this
-         * app too -- loadUrl() was being skipped whenever Android restored
-         * this Activity after killing the app's process in the background
-         * (this app's manifest already disables Activity recreation on
-         * rotation, so that was the ONLY time the old savedInstanceState
-         * guard ever mattered) -- now always loads if the WebView is still
-         * empty, plus a new onRenderProcessGone() safety net. (2) "Send
-         * Announcement" images now actually reach the notification, via a
-         * new background-downloaded BigPictureStyle upgrade.
+         * v1.0.12 (2026-10-22) -- AxomifyFirebaseMessagingService.kt only,
+         * direct port of the Rider app's own identical v1.3.22 fixes from
+         * this same owner batch (see that file's own v1.0.12 doc comment
+         * here for the full detail): (1) an 'app_update' push now opens the
+         * APK download URL directly on tap, instead of opening the app --
+         * paired with Axomify Core v1.3.29's admin-side "notify everyone"
+         * checkbox on the App Updates page, shared by both this app's and
+         * the Rider app's App Updates admin screen. (2) 'order_missed'
+         * siren-stop and order_id-based stable notification id, ported for
+         * consistency even though nothing in this app's own backend sends
+         * an 'order_missed' push today.
          *
          * NOTE for future edits to this versionName comment: keep it as a block
          * comment like this one (opening and closing comment markers, each on
@@ -45,7 +43,7 @@ android {
          * line-wrapped by a copy and paste somewhere along the way. A block
          * comment is immune to that failure mode.
          */
-        versionName = "1.0.11"
+        versionName = "1.0.12"
     }
 
     // v1.3.0 ADDED -- a stable, owner-owned release signing key. WHY THIS MATTERS:
