@@ -151,18 +151,22 @@ URL daal dijiye.
 
 ---
 
-## Icon/splash badalna (future mein kabhi)
+## Icon/splash badalna (future mein kabhi) — v1.3.0 se poori tarah self-service
 
 `app/branding/icon_source.png` hi wahi seller icon hai jo abhi use ho raha hai.
 Isko replace karke push kar dijiye — agla build khud `res/mipmap-*/` aur
 `res/drawable-nodpi/splash_logo.png` (choti circular logo, MainActivity ki
-apni bridge-splash screen par) regenerate kar dega — Rider app ke `v1.2.0`
-self-service pipeline jaisa hi.
+apni bridge-splash screen par) regenerate kar dega — Rider app ke self-service
+pipeline jaisa hi.
 
 **Bada full-screen splash** (`res/drawable-nodpi/splash_fullscreen.jpg`, "Happy
-Selling" wali artwork) is self-service script se NAHI judi — Rider app ke
-apne full-screen splash jaisa hi, yeh seedhe is file ko replace karke hi
-badalti hai, phir se build+reinstall ke saath.
+Selling" wali artwork) — **ab yeh bhi (v1.3.0 se) isi self-service script se
+judi hai**, pehle nahi thi. Badalne ke liye `app/branding/splash_fullscreen_source.png`
+(ya `.jpg`/`.jpeg`) daal dijiye — koi bhi size/ratio chalega, automatically
+poori screen fill karne ke liye scale+crop ho jayega. Pehle isko badalne ke
+liye seedhe is file ko replace karna padta tha (developer/Android Studio se);
+ab icon jaisa hi, sirf file replace + push kar dijiye. (Poora detail
+`app/branding/README.md` mein hai.)
 
 ---
 
